@@ -392,13 +392,13 @@ export default function MindMapCanvas({ graph }: MindMapCanvasProps) {
     }
 
     const handleResize = () => updateSize();
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', handleResize);
-    }
+    const win =
+      typeof window !== 'undefined'
+        ? (window as unknown as Window & typeof globalThis)
+        : undefined;
+    win?.addEventListener('resize', handleResize);
     return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('resize', handleResize);
-      }
+      win?.removeEventListener('resize', handleResize);
     };
   }, [isFullscreen]);
 
