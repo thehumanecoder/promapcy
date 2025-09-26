@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+yarn.lock
+pnpm-lock.yaml
+package-lock.json
+
+# Build outputs
+.next/
+out/
+dist/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*
+
+# WASM build artifacts
+wasm/pkg/
+wasm/target/
+
+# Misc
+.DS_Store
+.idea/
+.vscode/
+logs/
+logs/*.log
+*.log
