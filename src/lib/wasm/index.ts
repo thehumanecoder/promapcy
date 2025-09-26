@@ -6,19 +6,25 @@ type WasmExports = {
 };
 
 type WasmModule = WasmExports & {
-  default?: (input?: RequestInfo | URL) => Promise<unknown>;
+  default?: (input?: RequestInfo | URL | string) => Promise<unknown>;
 };
 
 let wasmModulePromise: Promise<WasmExports> | null = null;
 
-async function initialiseWasm(module: WasmModule): Promise<boolean> {
+const WASM_BOOTSTRAP_PATH = '/wasm/promapcy_wasm.js';
+const WASM_BINARY_PATH = '/wasm/promapcy_wasm_bg.wasm';
+
+function isBrowserEnvironment(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+async function initialiseWasm(module: WasmModule, wasmBinaryUrl: string): Promise<boolean> {
   if (typeof module.default !== 'function') {
     return true;
   }
 
   try {
-    const wasmUrl = new URL('../../../wasm/pkg/promapcy_wasm_bg.wasm', import.meta.url);
-    await module.default(wasmUrl);
+    await module.default(wasmBinaryUrl);
     return true;
   } catch (assetError) {
     try {
@@ -33,22 +39,37 @@ async function initialiseWasm(module: WasmModule): Promise<boolean> {
   }
 }
 
-async function importWasmModule(): Promise<WasmExports> {
+async function loadCompiledWasm(): Promise<WasmExports | null> {
+  if (!isBrowserEnvironment()) {
+    return null;
+  }
+
   try {
-    const module = (await import('../../../wasm/pkg')) as WasmModule;
-    const initialised = await initialiseWasm(module);
+    const module = (await import(/* webpackIgnore: true */ WASM_BOOTSTRAP_PATH)) as WasmModule;
+    const initialised = await initialiseWasm(module, WASM_BINARY_PATH);
+
     if (!initialised) {
-      const mock = await import('./mock-wasm');
-      return mock as unknown as WasmExports;
+      return null;
     }
+
     return module;
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('Falling back to mock WASM implementation', error);
     }
-    const mock = await import('./mock-wasm');
-    return mock as unknown as WasmExports;
+    return null;
   }
+}
+
+async function importWasmModule(): Promise<WasmExports> {
+  const compiledModule = await loadCompiledWasm();
+
+  if (compiledModule) {
+    return compiledModule;
+  }
+
+  const mock = await import('./mock-wasm');
+  return mock as unknown as WasmExports;
 }
 
 export async function loadAnalyzer(): Promise<WasmExports> {
